@@ -1,66 +1,47 @@
-# Day 12 — AI SDLC: Quán Ăn Chợ Nổi
+# Day 12 — AI SDLC: Quán Ăn Chợ Nổi (`v1.0.0` · Nhóm Semi)
 
-> **Làm theo nhóm 4–6 người** · Dùng AI để xây game 2D qua **4 phase** trong **3 giờ**: Út Sen lặn bắt cá, hái rau trên mặt nước rồi tối mở quán phục vụ khách.
-> **Yêu cầu từng phase mở đúng mốc giờ tại lab board:** **[Chợ Nổi Lab](https://claude.ai/artifact/E35v787wSx2wDgPTNhMVDg)** (cần đăng nhập claude.ai; có trợ giảng AI cho từng phase).
+> Game quản lý quán ăn 2D miền Tây Nam Bộ: buổi sáng Út Sen lặn bắt cá, hái rau trên sông Chín Khúc; tối mở quán phục vụ khách trên nhà bè của Má Tư.
+> Nhóm `Semi` (`TuanAnhNg131` — nhóm 1 thành viên) · **Test Contract `v1.3`** · Giấy phép [`LICENSE`](LICENSE) · Bản phát hành [`docs/release-v1.0.0.md`](docs/release-v1.0.0.md).
 
-## Bắt buộc (chỉ có thế)
+## Chạy nhanh từ clone sạch (≤ 3 lệnh trên macOS / Linux)
 
-Cách làm việc kỹ thuật là **tự do** (push thẳng, nhánh + PR, pair, có hay không CI…). Cái bắt buộc:
-
-1. **Một repo chung:** trưởng nhóm **fork** repo này, đặt tên `K5-L3B-LAB-Day12-AI-SDLC-<ten-nhom>`, thêm mọi thành viên làm collaborator (*Settings → Collaborators*, quyền Write) và để repo **public** (giảng viên xem được, không cần mời).
-2. **Cả nhóm cùng commit** bằng tài khoản GitHub của mình, mỗi người **≥ 3 commit có nội dung** (làm cặp thì ghi `Co-authored-by:`).
-3. **Điền [`TEAM.md`](TEAM.md):** danh sách thành viên + thỏa thuận làm việc nhóm; sửa `team_size` trong [`game.contract.json`](game.contract.json). Commit của người không có trong `TEAM.md` không được tính.
-4. **Gắn tag** `phase-1` … `phase-4` đúng hạn; chạy được tại từng tag.
-5. **Ghi chép tối thiểu:** `docs/verification/phase-n.md`, `docs/clarify.md`, `docs/ai-usage-log.md`, `docs/retro.md`, `docs/members/<handle>.md`.
-
-## Bắt đầu nhanh
-
-Chạy từ repo sạch trên macOS / Linux (chỉ dùng Python 3.12+ chuẩn, không cần cài thư viện ngoài):
+**Yêu cầu môi trường:** Python `3.12+` (chỉ dùng thư viện chuẩn, không cần cài thêm gói ngoài) và trình duyệt hiện đại.
 
 ```bash
 git clone https://github.com/TuanAnhNg131/K5-L3B-LAB-Day12-AI-SDLC-Semi.git && cd K5-L3B-LAB-Day12-AI-SDLC-Semi
-PYTHONPATH=tests:. python3 -m unittest discover -s tests -v        # chạy toàn bộ test bằng 1 lệnh
-python3 -m chonoi.live --mode day                                   # chơi trọn vòng 5 ngày trên trình duyệt
+PYTHONPATH=tests:. python3 -m unittest discover -s tests -v        # chạy toàn bộ test P1-P4 (1 lệnh)
+python3 -m chonoi.live --mode day --days 5                          # mở chơi trọn 5 ngày tại http://127.0.0.1:8000/
 ```
 
-- **Điều khiển:** `WASD` / phím mũi tên để bơi hoặc di chuyển; `E` (`interact`) để cập bến / hái rau / nấu, bưng và phục vụ; `Space` (`catch`) để bắt cá khi lặn; `Esc` / `P` để tạm dừng; phím `1`, `2`, `Enter` trong Shop; `R` để chơi lại.
-- **Cách tính điểm:** `score = earned + 100 * floor(reputation)` (tiền tính theo nghìn đồng; `earned` gồm tiền món theo độ tươi + boa, mua nâng cấp chỉ trừ `money`).
-- **Hợp đồng kho & độ tươi (v1.2):** Kho dùng danh sách cá thể `{id, kind, fresh}` (`fresh ∈ [0, 100]`, ươn khi `< 30`). Xem chi tiết tại [`docs/contracts/README.md`](docs/contracts/README.md), [`docs/adr/0001-itemized-inventory-freshness.md`](docs/adr/0001-itemized-inventory-freshness.md) và [`docs/contracts/inventory.sample.json`](docs/contracts/inventory.sample.json).
+*(Trên Windows PowerShell dùng `python` thay `python3`; khi chạy `unittest` xóa biến proxy nếu máy bật proxy nội bộ: `$env:PYTHONPATH="tests;."; $env:http_proxy=""; $env:https_proxy=""; python -m unittest discover -s tests -v`.)*
 
-Game cần chế độ **headless** theo Test Contract (`python3 -m chonoi.headless --mode gather|quan|day …`) để được chạy và chấm tự động. Chi tiết khung kỹ thuật ở [`docs/STARTER.md`](docs/STARTER.md).
+## Điều khiển & Tính điểm
+
+- **Di chuyển:** `WASD` hoặc phím mũi tên · **Tương tác (cập bến / hái rau / nấu / bưng / phục vụ):** `E`
+- **Bắt cá (dưới nước):** `Space` · **Tạm dừng:** `Esc` hoặc `P` · **Tương phản cao:** `H` · **Chơi lại:** `R`
+- **Trong Shop cuối ngày:** Phím `1` (Bình Oxy), `2` (Áo Phao), `Enter` (Xong Shop)
+- **Cách tính điểm:** `score = earned + 100 * floor(reputation)` (`earned` tính bằng nghìn đồng gồm tiền món theo độ tươi + boa; mua nâng cấp chỉ trừ `money`).
+
+## Các lệnh Headless, Benchmark & Soak (`game.contract.json` v1.3)
+
+```bash
+python3 -m chonoi.headless --mode gather|quan|day --seed 1 --ticks 600 --out out.jsonl
+python3 -m chonoi.bench --seed 42 --duration 30 --out bench.json
+python3 -m chonoi.soak --seed 7 --days 10 --out soak.json
+```
+
+- **Hợp đồng kho & độ tươi (`v1.2–v1.3`):** Xem [`docs/contracts/README.md`](docs/contracts/README.md), [`docs/adr/0001-itemized-inventory-freshness.md`](docs/adr/0001-itemized-inventory-freshness.md) và [`docs/contracts/inventory.sample.json`](docs/contracts/inventory.sample.json). Chi tiết khung kỹ thuật ở [`docs/STARTER.md`](docs/STARTER.md).
 
 ## Tự do sáng tạo
 
-Ngoài phần đề yêu cầu, nhóm được **thêm** nhân vật, loài cá/cây, sinh vật, món, bản đồ, cơ chế, câu chuyện, đồ họa, âm nhạc… với ba điều kiện: **không phá phần cố định** (tắt ở headless), ghi mục **"Sáng tạo của nhóm"** trong README của nhóm, và **làm lõi đúng trước**.
+Ngoài phần đề yêu cầu, nhóm giữ nguyên tuyệt đối toàn bộ quy tắc lõi và mở rộng ở lớp client (tắt hoàn toàn trong chế độ `headless` / `soak`):
 
 ### Sáng tạo của nhóm
-- **Giao diện Chợ Nổi Miền Tây & Âm thanh WebAudio (chỉ chạy ở client trình duyệt, tắt hoàn toàn ở `headless`):** Vẽ trực quan sông phù sa, bờ dừa nước, nhà bè đèn dây vàng, Út Sen mặc áo bà ba/khăn rằn và kính lặn, hiệu ứng viền tím cảnh báo Cá Sấu Năm Chèo, cùng nhạc nền ngũ cung và hiệu ứng SFX tổng hợp bằng WebAudio API lưu cấu hình âm lượng (Master/Music/SFX) bền vững qua `localStorage`.
-- **Bằng chứng lõi vẫn đúng:** Toàn bộ quy tắc lõi trong `chonoi/sim/*` độc lập với UI và âm thanh; toàn bộ test hộp đen qua `headless_cmd` (`tests/test_smoke_p1.py`, `tests/test_p1_rules.py`, `tests/test_p2_rules.py`) đều đạt và tất định theo từng byte (xem [`docs/verification/phase-2.md`](docs/verification/phase-2.md)).
+- **Giao diện Chợ Nổi Miền Tây, Âm thanh WebAudio & Phụ đề SFX:** Vẽ trực quan sông phù sa, bờ dừa nước, nhà bè đèn dây vàng, Út Sen mặc áo bà ba/khăn rằn và kính lặn, hiệu ứng cảnh báo Thủy quái viền tím, nhạc nền ngũ cung + SFX tổng hợp bằng WebAudio API lưu âm lượng qua `localStorage`, kèm thanh phụ đề SFX và chế độ tương phản cao (`H`).
+- **Bằng chứng lõi vẫn đúng:** Toàn bộ logic trong `chonoi/sim/*` độc lập với UI/SFX; toàn bộ 67/67 bài kiểm thử tự động hộp đen (`tests/test_smoke_p1.py`, `tests/test_p1_rules.py`, `tests/test_p2_rules.py`, `tests/test_p3_rules.py`, `tests/test_p4_release.py`), benchmark `30s` (`821.88 FPS`) và soak `10` Ngày (`crashes = 0`) đều đạt trên cùng commit bàn giao (xem [`docs/verification/phase-4.md`](docs/verification/phase-4.md)).
 
-## Lịch 3 giờ
+## Quy trình & Tài liệu nhóm (`Semi`)
 
-| Mốc | Phase | Hạn tag |
-|---|---|---|
-| 0:00 | Phase 1 (PRD-0) | `phase-1` trước 1:00 |
-| 1:00 | Phase 2 | `phase-2` trước 1:55 |
-| 1:55 | Phase 3 | `phase-3` trước 2:30 |
-| 2:30 | Phase 4 | `phase-4` + Release `v1.0.0` trước 3:00 |
-
-Hết giờ mỗi phase thì gắn tag rồi đi tiếp; chỗ chưa xong ghi trung thực trong bằng chứng.
-
-## Đánh giá (100 điểm)
-
-| Hạng mục | Điểm |
-|---|---|
-| Test tự động ẩn (headless, gồm kiểm tra lại phase trước) | 25 |
-| Làm việc nhóm (một repo chung, chia việc, tích hợp, đổi yêu cầu) | 25 |
-| Kiểm chứng & bằng chứng | 15 |
-| Harness AI (AGENTS.md, skill, nhật ký dùng AI) | 10 |
-| Đánh giá & retro | 10 |
-| Chất lượng sản phẩm (đúng yêu cầu, mở rộng/sáng tạo) | 10 |
-| Demo | 5 |
-
-## Quy định
-
-- Dùng AI thoải mái; **không sao chép repo của nhóm khác**; bằng chứng phải thật.
-- Nhân vật, bối cảnh là bản gốc của lab; asset ngoài chỉ dùng CC0/CC-BY/MIT hoặc tự tạo, ghi nguồn trong `CREDITS.md`. Không commit API key, token, `.env`.
+- Thành viên & vai: [`TEAM.md`](TEAM.md) · Hướng dẫn AI: [`AGENTS.md`](AGENTS.md) · Phản tư cá nhân: [`docs/members/TuanAnhNg131.md`](docs/members/TuanAnhNg131.md)
+- Kế hoạch & Kiểm chứng: `docs/plan/phase-1..4.md`, `docs/verification/phase-1..4.md`, bằng chứng thật tại `docs/proof/phase-1..4/`
+- Nhật ký: [`docs/clarify.md`](docs/clarify.md) · [`docs/standup.md`](docs/standup.md) · [`docs/ai-usage-log.md`](docs/ai-usage-log.md) · [`docs/retro.md`](docs/retro.md) · [`CHANGELOG.md`](CHANGELOG.md) · [`CREDITS.md`](CREDITS.md)

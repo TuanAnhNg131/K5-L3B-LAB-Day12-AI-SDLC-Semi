@@ -5,12 +5,13 @@
 ## Lệnh
 - Test (Linux/macOS): `PYTHONPATH=tests:. python3 -m unittest discover -s tests -v`
 - Test (Windows PowerShell): `$env:PYTHONPATH="tests;."; $env:http_proxy=""; $env:https_proxy=""; python -m unittest discover -s tests -v`
-- Headless: `python -m chonoi.headless --mode gather|quan --seed 1 --ticks 600 --out out.jsonl` (trên Linux/macOS dùng `python3`)
-- Chơi thử trên trình duyệt: `python -m chonoi.live --mode gather|quan` (mở địa chỉ in ra; WASD, E, Space, R)
+- Headless: `python -m chonoi.headless --mode gather|quan|day --seed 1 --ticks 600 --out out.jsonl` (trên Linux/macOS dùng `python3`)
+- Benchmark (`1280×720`): `python -m chonoi.bench --seed 42 --duration 30 --out bench.json`
+- Soak (`10` ngày): `python -m chonoi.soak --seed 7 --days 10 --out soak.json`
+- Chơi thử trên trình duyệt: `python -m chonoi.live --mode day --days 5` (mở địa chỉ in ra; WASD, E, Space, Esc/P, H tương phản cao, R)
 
 ## Trạng thái Phase & quy ước cập nhật
-- **Phase 3 (Test Contract v1.2):** `Semi` (`TuanAnhNg131`). Đã áp dụng Change Request "Mùa Nước Nổi" (kho cá thể `{id, kind, fresh}`, hao tươi `0.5/s` ở `gather` và `0.25/s` ở `quan`, sự kiện `spoiled` khi `< 30`, giữ chỗ theo `id`, giá theo độ tươi). Xem bảng tác động tại `docs/adr/0001-itemized-inventory-freshness.md`.
-- Lệnh chơi đầy đủ theo ngày: `python -m chonoi.live --mode day --days 5` (hoặc `python3` trên Linux/macOS).
+- **Phase 4 (Test Contract v1.3 · Release `v1.0.0`):** `Semi` (`TuanAnhNg131`). Hoàn tất toàn bộ 4 phase: thêm `bench_cmd`, `soak_cmd`, 3 cảnh báo dễ nhận biết + chế độ tương phản cao (`H`) + phụ đề SFX, đóng gói và phát hành `v1.0.0`. Xem [`docs/release-v1.0.0.md`](docs/release-v1.0.0.md).
 
 ## Cấu trúc & quy ước
 - (Starter Python là TÙY CHỌN; nhóm có thể dùng ngôn ngữ khác nếu giữ Test Contract.) Khung do giảng viên cấp: `chonoi/{headless,inputs,scenario,contract,rng,ids,jsonl,inventory,runner,live}.py` và `chonoi/web/`. Hạn chế sửa; nếu phải sửa thì báo cả nhóm và ghi lại lý do.

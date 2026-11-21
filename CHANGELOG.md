@@ -1,6 +1,12 @@
 # Changelog
 ## Unreleased
 
+## [v1.0.0] — phase-4 · Test Contract v1.3: Phát hành chính thức (2026-11-21)
+- **Contract v1.3 & Benchmark (`game.contract.json`, `chonoi/bench.py`):** Khai báo `bench_cmd` (`1280×720` software framebuffer render cho cảnh lặn sáng, làm nóng `3s`, đo `30s`), đạt `821.88 FPS` trung bình, `280.21 FPS` 1% low và `177.24 ms` load time.
+- **Soak Headless 10 Ngày (`chonoi/soak.py`, `chonoi/sim/day.py`):** Hỗ trợ kế hoạch Ngày 6–10 lặp lại D1–D5 và chạy bot tất định `10` Ngày liên tục (`days_completed = 10`, `crashes = 0`, tất định 100%).
+- **Khả năng tiếp cận & Phụ đề (`chonoi/web/index.html`):** Bổ sung chế độ tương phản cao (phím `H` và nút bật/tắt lưu qua `localStorage`), 3 cảnh báo rõ chữ + icon (*Thủy quái gần*, *Oxy sắp hết / Hết hơi*, *Khách sắp giận*) và thanh phụ đề SFX.
+- **Đóng gói & Tài liệu:** Thêm [`LICENSE`](LICENSE) (MIT), cập nhật [`CREDITS.md`](CREDITS.md), [`docs/release-v1.0.0.md`](docs/release-v1.0.0.md), [`docs/retro.md`](docs/retro.md) (rà lại hành động P2), [`docs/members/TuanAnhNg131.md`](docs/members/TuanAnhNg131.md), lưu bằng chứng `docs/proof/phase-4/`, gắn tag `phase-4` và `v1.0.0`.
+
 ## [phase-3] — Test Contract v1.2: Mùa Nước Nổi & Độ Tươi (2026-11-21)
 - **BREAKING CHANGE — Kho đếm → Kho cá thể (`chonoi/inventory.py`, `chonoi/scenario.py`, `docs/adr/0001-itemized-inventory-freshness.md`):**
   - Chuyển schema kho sang `{"items":[{"id":"I1","kind":"ca_linh","fresh":100}]}` (`gather.hold`, `quan.stock`, `shop.stock`, `cook_started.items`, `monster_hit.lost`, `faint.lost`).
