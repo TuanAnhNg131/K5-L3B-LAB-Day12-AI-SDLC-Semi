@@ -1,6 +1,19 @@
 # Changelog
 ## Unreleased
 
+## [phase-3] — Test Contract v1.2: Mùa Nước Nổi & Độ Tươi (2026-11-21)
+- **BREAKING CHANGE — Kho đếm → Kho cá thể (`chonoi/inventory.py`, `chonoi/scenario.py`, `docs/adr/0001-itemized-inventory-freshness.md`):**
+  - Chuyển schema kho sang `{"items":[{"id":"I1","kind":"ca_linh","fresh":100}]}` (`gather.hold`, `quan.stock`, `shop.stock`, `cook_started.items`, `monster_hit.lost`, `faint.lost`).
+  - Các file kho đếm kiểu cũ (`{"items":{"ca_loc":1}}`) hoặc scenario dùng dạng chuỗi/map cũ trả mã thoát `2`.
+  - Hướng dẫn chuyển đổi fixture: chuyển `hold`/`stock` thành mảng cá thể `{id, kind, fresh}` (hoặc `[]` nếu rỗng) và chuyển `customers[].reserved` thành mảng `id` cá thể.
+- **Độ tươi & Giữ chỗ (`chonoi/sim/gather.py`, `chonoi/sim/quan.py`, `chonoi/sim/day.py`):**
+  - Tính độ tươi chính xác tuyệt đối bằng đơn vị `1/240` + `Fraction` (`0.5/s` tại `gather`, `0.25/s` tại `quan`, `pause` dừng hao, món chín & Shop không hao).
+  - Phát `spoiled` một lần theo `id` khi vượt từ `≥ 30` xuống `< 30`.
+  - Giữ chỗ lấy cá thể chưa ươn tươi nhất (hòa lấy `id` nhỏ); khi phần giữ bị ươn, nhả toàn bộ và thử giữ lại một lần theo `(order_tick, table_id)`, thiếu thì chuyển `unfulfillable`.
+  - Chốt `base_price = floor(giá niêm yết × trung bình fresh / 100)` khi `cook_started`, boa tính trên giá đã chốt.
+  - Cấp `I1, I2, ...` liên tục qua pha và Ngày (`IdAllocator`).
+- **HUD & Kiểm thử (`chonoi/web/index.html`, `tests/test_p3_rules.py`):** Hiển thị độ tươi từng ô giỏ, cảnh báo `ƯƠN` (< 30%), cập nhật test P1–P2 theo v1.2 và lưu bằng chứng tại `docs/proof/phase-3/`.
+
 ## [phase-2] — Test Contract v1.1: Một ngày ở chợ nổi (2026-11-21)
 - **Tuning chuẩn v1.1 (`game.contract.json`, `chonoi/contract.py`, `chonoi/inventory.py`):** Thêm `ca_keo`, `keo_neo`, nút `N5/N6`, 2 bếp (`B1..B2`), 4 bàn (`T1..T4`), 6 món thực đơn, kế hoạch ngày `D1–D5` (`day_plan`) và cấu hình `shop` nâng cấp `oxygen`/`hp`.
 - **Gather v1.1 (`chonoi/sim/gather.py`):** Khởi tạo `8` đàn cá theo trọng số loài, cá bơi `1.5 m/s`, đổi hướng mỗi `120` tick, phản xạ biên/góc, sinh thêm mỗi `360` tick (trần `12`); bổ sung Cá Sấu Năm Chèo (`M1` từ Ngày 1, `M2` từ Ngày 3) tuần tra, rượt đuổi, hit rớt `floor(giỏ/2)` LIFO, `recoil` `60` tick, bất tử `90` tick và ngất `cause="monster"`.

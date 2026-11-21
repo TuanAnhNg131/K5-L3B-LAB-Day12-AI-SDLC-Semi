@@ -9,7 +9,7 @@
 - Chơi thử trên trình duyệt: `python -m chonoi.live --mode gather|quan` (mở địa chỉ in ra; WASD, E, Space, R)
 
 ## Trạng thái Phase & quy ước cập nhật
-- **Phase 2 (Test Contract v1.1):** `Semi` (`TuanAnhNg131`). Đã nâng cấp lên v1.1 (`--mode day --days 1..5`, 6 nguyên liệu, 6 món, 2 bếp 4 bàn, cá bơi/sinh, Cá Sấu `M1`/`M2`, Shop nâng cấp, `pause`, menu/HUD). Giữ `headless_cmd` trong `game.contract.json` là `python3 -m chonoi.headless` cho CI/chấm tự động.
+- **Phase 3 (Test Contract v1.2):** `Semi` (`TuanAnhNg131`). Đã áp dụng Change Request "Mùa Nước Nổi" (kho cá thể `{id, kind, fresh}`, hao tươi `0.5/s` ở `gather` và `0.25/s` ở `quan`, sự kiện `spoiled` khi `< 30`, giữ chỗ theo `id`, giá theo độ tươi). Xem bảng tác động tại `docs/adr/0001-itemized-inventory-freshness.md`.
 - Lệnh chơi đầy đủ theo ngày: `python -m chonoi.live --mode day --days 5` (hoặc `python3` trên Linux/macOS).
 
 ## Cấu trúc & quy ước

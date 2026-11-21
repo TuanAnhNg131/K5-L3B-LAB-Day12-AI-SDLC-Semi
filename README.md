@@ -24,8 +24,8 @@ python3 -m chonoi.live --mode day                                   # chơi tr�
 ```
 
 - **Điều khiển:** `WASD` / phím mũi tên để bơi hoặc di chuyển; `E` (`interact`) để cập bến / hái rau / nấu, bưng và phục vụ; `Space` (`catch`) để bắt cá khi lặn; `Esc` / `P` để tạm dừng; phím `1`, `2`, `Enter` trong Shop; `R` để chơi lại.
-- **Cách tính điểm:** `score = earned + 100 * floor(reputation)` (tiền tính theo nghìn đồng; `earned` gồm tiền món + boa, mua nâng cấp chỉ trừ `money`).
-- **Hợp đồng kho & sự kiện:** Xem chi tiết tại [`docs/contracts/README.md`](docs/contracts/README.md) và file mẫu [`docs/contracts/inventory.sample.json`](docs/contracts/inventory.sample.json).
+- **Cách tính điểm:** `score = earned + 100 * floor(reputation)` (tiền tính theo nghìn đồng; `earned` gồm tiền món theo độ tươi + boa, mua nâng cấp chỉ trừ `money`).
+- **Hợp đồng kho & độ tươi (v1.2):** Kho dùng danh sách cá thể `{id, kind, fresh}` (`fresh ∈ [0, 100]`, ươn khi `< 30`). Xem chi tiết tại [`docs/contracts/README.md`](docs/contracts/README.md), [`docs/adr/0001-itemized-inventory-freshness.md`](docs/adr/0001-itemized-inventory-freshness.md) và [`docs/contracts/inventory.sample.json`](docs/contracts/inventory.sample.json).
 
 Game cần chế độ **headless** theo Test Contract (`python3 -m chonoi.headless --mode gather|quan|day …`) để được chạy và chấm tự động. Chi tiết khung kỹ thuật ở [`docs/STARTER.md`](docs/STARTER.md).
 
