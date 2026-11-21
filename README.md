@@ -15,13 +15,19 @@ Cách làm việc kỹ thuật là **tự do** (push thẳng, nhánh + PR, pair,
 
 ## Bắt đầu nhanh
 
+Chạy từ repo sạch trên macOS / Linux (chỉ dùng Python 3.12+ chuẩn, không cần cài thư viện ngoài):
+
 ```bash
-git clone <fork-của-nhóm> && cd <fork-của-nhóm>
-PYTHONPATH=tests:. python3 -m unittest discover -s tests -v        # smoke test
-python3 -m chonoi.live --mode gather                                # chơi thử trên trình duyệt (tùy chọn)
+git clone https://github.com/TuanAnhNg131/K5-L3B-LAB-Day12-AI-SDLC-Semi.git && cd K5-L3B-LAB-Day12-AI-SDLC-Semi
+PYTHONPATH=tests:. python3 -m unittest discover -s tests -v        # chạy toàn bộ test bằng 1 lệnh
+python3 -m chonoi.live --mode gather                                # chơi thử trên trình duyệt (hoặc --mode quan)
 ```
 
-Game cần chế độ **headless** theo Test Contract (`python3 -m chonoi.headless --mode gather|quan …`) để được chạy và chấm tự động. **Công nghệ không ràng buộc**: khung Python trong `chonoi/` chỉ là gợi ý, chi tiết ở [`docs/STARTER.md`](docs/STARTER.md).
+- **Điều khiển:** `WASD` / phím mũi tên để bơi hoặc di chuyển; `E` (`interact`) để cập bến / hái rau / nấu, bưng và phục vụ; `Space` (`catch`) để bắt cá khi lặn; `R` để chơi lại.
+- **Cách tính điểm:** `score = earned + 100 * floor(reputation)` (tiền tính theo nghìn đồng; `earned` gồm tiền món + boa).
+- **Hợp đồng kho & sự kiện:** Xem chi tiết tại [`docs/contracts/README.md`](docs/contracts/README.md) và file mẫu [`docs/contracts/inventory.sample.json`](docs/contracts/inventory.sample.json).
+
+Game cần chế độ **headless** theo Test Contract (`python3 -m chonoi.headless --mode gather|quan …`) để được chạy và chấm tự động. Chi tiết khung kỹ thuật ở [`docs/STARTER.md`](docs/STARTER.md).
 
 ## Tự do sáng tạo
 
