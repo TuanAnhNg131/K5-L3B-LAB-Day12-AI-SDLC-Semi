@@ -59,7 +59,8 @@ class TestGatherV11(unittest.TestCase):
             rows = read_jsonl(w.path("g.jsonl"))
             self.assertEqual(events(rows, "fish_caught")[0]["data"], {"fish_id": "F1", "kind": "ca_keo", "yield": 2})
             with open(inv, encoding="utf-8") as f:
-                self.assertEqual(json.load(f), {"items": {"ca_keo": 2}})
+                items = json.load(f)["items"]
+                self.assertEqual([(x["id"], x["kind"], x["fresh"]) for x in items], [("I1", "ca_keo", 100), ("I2", "ca_keo", 100)])
 
     def test_fish_initial_swim_corner_reflect_turn_and_spawn(self):
         # Kiểm tra 8 đàn ban đầu ở 8 điểm riêng, và sinh đàn thứ 9 ở tick 360
@@ -120,7 +121,11 @@ class TestGatherV11(unittest.TestCase):
             sc = write_json(w.path("sc.json"), {
                 "gather": {
                     "player": {"pos": [60, 24]},
-                    "hold": ["ca_loc", "bong_sung", "ca_keo"],
+                    "hold": [
+                        {"id": "I1", "kind": "ca_loc", "fresh": 100},
+                        {"id": "I2", "kind": "bong_sung", "fresh": 100},
+                        {"id": "I3", "kind": "ca_keo", "fresh": 100},
+                    ],
                     "random_fish": False,
                     "monsters": [{
                         "id": "M1", "kind": "ca_sau", "pos": [60, 24],
@@ -138,11 +143,11 @@ class TestGatherV11(unittest.TestCase):
             # Hit tại tick 1 (trùng tâm dùng +x để recoil), không hit suốt invuln/recoil 60 tick
             self.assertEqual(len(hits), 1)
             self.assertEqual(hits[0]["tick"], 1)
-            self.assertEqual(hits[0]["data"], {
-                "monster_id": "M1", "hp": 2, "lost": ["ca_keo"], "pos": [60.0, 24.0],
-            })
+            self.assertEqual(hits[0]["data"]["monster_id"], "M1")
+            self.assertEqual(hits[0]["data"]["hp"], 2)
+            self.assertEqual([x["id"] for x in hits[0]["data"]["lost"]], ["I3"])
             snaps = {s["tick"]: s for s in snapshots(rows)}
-            self.assertEqual(snaps[1]["hold"], ["ca_loc", "bong_sung"])
+            self.assertEqual([x["id"] for x in snaps[1]["hold"]], ["I1", "I2"])
             self.assertEqual(snaps[1]["player"]["invuln_ticks"], 90)
             self.assertEqual(snaps[1]["monsters"][0]["state"], "recoil")
             self.assertEqual(snaps[1]["monsters"][0]["recoil_dir"], [1.0, 0.0])
@@ -156,7 +161,10 @@ class TestGatherV11(unittest.TestCase):
             sc = write_json(w.path("sc.json"), {
                 "gather": {
                     "player": {"pos": [20, 10], "hp": 3, "oxygen_ticks": 0, "zero_oxy_ticks": 59, "invuln_ticks": 50},
-                    "hold": ["ca_loc", "bong_sung"],
+                    "hold": [
+                        {"id": "I1", "kind": "ca_loc", "fresh": 100},
+                        {"id": "I2", "kind": "bong_sung", "fresh": 100},
+                    ],
                     "random_fish": False,
                     "monsters": [],
                 }
@@ -165,7 +173,7 @@ class TestGatherV11(unittest.TestCase):
             self.assertEqual(code, 0, err)
             rows = read_jsonl(w.path("g.jsonl"))
             self.assertEqual(events(rows, "choke")[0]["data"], {"hp": 2})
-            self.assertEqual(snapshots(rows)[-1]["hold"], ["ca_loc", "bong_sung"])
+            self.assertEqual([x["id"] for x in snapshots(rows)[-1]["hold"]], ["I1", "I2"])
 
     def test_monster_faint_in_day_mode_delivers_empty_and_day3_m2(self):
         # Đánh chết -> faint cause="monster", liệt kê giỏ còn lại theo LIFO, sang quán với kho rỗng
@@ -173,7 +181,11 @@ class TestGatherV11(unittest.TestCase):
             sc = write_json(w.path("sc.json"), {
                 "gather": {
                     "player": {"pos": [60, 24], "hp": 1},
-                    "hold": ["ca_loc", "bong_sung", "ca_linh"],
+                    "hold": [
+                        {"id": "I1", "kind": "ca_loc", "fresh": 100},
+                        {"id": "I2", "kind": "bong_sung", "fresh": 100},
+                        {"id": "I3", "kind": "ca_linh", "fresh": 100},
+                    ],
                     "random_fish": False,
                     "monsters": [{
                         "id": "M1", "kind": "ca_sau", "pos": [60, 24],
@@ -185,13 +197,15 @@ class TestGatherV11(unittest.TestCase):
             code, err = run_headless("--mode", "day", "--days", "1", "--seed", "1", "--ticks", "2", "--scenario", sc, "--out", w.path("d.jsonl"))
             self.assertEqual(code, 0, err)
             rows = read_jsonl(w.path("d.jsonl"))
-            self.assertEqual(events(rows, "monster_hit")[0]["data"]["lost"], ["ca_linh"])
-            self.assertEqual(events(rows, "faint")[0]["data"], {"cause": "monster", "lost": ["bong_sung", "ca_loc"], "hp": 0})
-            self.assertEqual(events(rows, "gather_end")[0]["data"]["inventory"], {"items": {}})
+            self.assertEqual([x["id"] for x in events(rows, "monster_hit")[0]["data"]["lost"]], ["I3"])
+            faint_d = events(rows, "faint")[0]["data"]
+            self.assertEqual(faint_d["cause"], "monster")
+            self.assertEqual([x["id"] for x in faint_d["lost"]], ["I2", "I1"])
+            self.assertEqual(events(rows, "gather_end")[0]["data"]["inventory"], {"items": []})
             sn1 = [s for s in snapshots(rows) if s["tick"] == 1][0]
             self.assertEqual(sn1["phase"], "quan")
             self.assertEqual(sn1["phase_tick"], 0)
-            self.assertEqual(sn1["stock"], {})
+            self.assertEqual(sn1["stock"], [])
 
 
 class TestDayShopPauseAndValidationV11(unittest.TestCase):
@@ -202,7 +216,11 @@ class TestDayShopPauseAndValidationV11(unittest.TestCase):
                 "day": {"money": 250, "earned": 250},
                 "gather": {
                     "player": {"pos": [2, 0]},
-                    "hold": ["ca_loc", "ca_keo", "ca_keo"],  # ca_keo không thuộc D1 plan -> quán D1 chỉ chọn ca_loc_nuong_trui
+                    "hold": [
+                        {"id": "I1", "kind": "ca_loc", "fresh": 100},
+                        {"id": "I2", "kind": "ca_keo", "fresh": 100},
+                        {"id": "I3", "kind": "ca_keo", "fresh": 100},
+                    ],  # ca_keo không thuộc D1 plan -> quán D1 chỉ chọn ca_loc_nuong_trui
                     "random_fish": False,
                     "time_left_ticks": 60,
                 },
@@ -332,12 +350,12 @@ class TestDayShopPauseAndValidationV11(unittest.TestCase):
             {"day": {"money": 200, "earned": 100}},  # money > earned
             {"day": {"upgrades": {"oxygen": 3}}},
             {"day": {"day_plan": [{"day": 1, "dishes": {"ca_loc_nuong_trui": 1}, "ingredients": {"ca_loc": 2}}]}},
-            {"quan": {"stock": {"ca_loc": 1}}},
+            {"quan": {"stock": [{"id": "I1", "kind": "ca_loc", "fresh": 100}]}},
             {"quan": {"reputation": 4.0}},
             {"gather": {"monsters": [{"id": "M1", "kind": "ca_sau", "pos": [60, 24], "waypoints": [[60, 24], [64, 24]], "state": "recoil", "state_ticks_left": 0, "recoil_dir": [1, 0]}]}},
             {"gather": {"monsters": [{"id": "M1", "kind": "ca_sau", "pos": [60, 24], "waypoints": [[60, 24], [64, 24]], "state": "recoil", "state_ticks_left": 5, "recoil_dir": [2, 0]}]}},
             # Món trong quan.customers không nằm trong kế hoạch D1 (lỗi khi mở quán)
-            {"gather": {"player": {"pos": [2, 0]}, "hold": ["ca_keo", "ca_keo"], "random_fish": False},
+            {"gather": {"player": {"pos": [2, 0]}, "hold": [{"id": "I1", "kind": "ca_keo", "fresh": 100}, {"id": "I2", "kind": "ca_keo", "fresh": 100}], "random_fish": False},
              "quan": {"customers": [{"id": "C1", "table_id": "T1", "dish_id": "ca_keo_nuong"}]}},
         ]
         for idx, sc_obj in enumerate(bad_scenarios):

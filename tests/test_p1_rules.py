@@ -85,8 +85,13 @@ class TestGatherRules(unittest.TestCase):
             sc = write_json(w.path("sc.json"), {
                 "gather": {
                     "player": {"pos": [20, 5], "oxygen_ticks": 0, "zero_oxy_ticks": 59, "hp": 1},
-                    "hold": ["ca_loc", "bong_sung", "ca_linh"],
+                    "hold": [
+                        {"id": "I1", "kind": "ca_loc", "fresh": 100},
+                        {"id": "I2", "kind": "bong_sung", "fresh": 100},
+                        {"id": "I3", "kind": "ca_linh", "fresh": 100},
+                    ],
                     "random_fish": False,
+                    "monsters": [],
                 }
             })
             inv = w.path("inv.json")
@@ -99,13 +104,15 @@ class TestGatherRules(unittest.TestCase):
             self.assertEqual(events(rows, "choke")[0]["data"], {"hp": 0})
             faints = events(rows, "faint")
             self.assertEqual(len(faints), 1)
-            self.assertEqual(faints[0]["data"], {"cause": "choke", "lost": ["ca_linh", "bong_sung", "ca_loc"], "hp": 0})
+            self.assertEqual(faints[0]["data"]["cause"], "choke")
+            self.assertEqual([x["id"] for x in faints[0]["data"]["lost"]], ["I3", "I2", "I1"])
+            self.assertEqual(faints[0]["data"]["hp"], 0)
             end_ev = events(rows, "gather_end")[0]["data"]
-            self.assertEqual(end_ev, {"reason": "fainted", "inventory": {"items": {}}})
+            self.assertEqual(end_ev, {"reason": "fainted", "inventory": {"items": []}})
             self.assertEqual(rows[-1]["ticks"], 1)
             self.assertEqual(rows[-1]["reason"], "fainted")
             with open(inv, encoding="utf-8") as f:
-                self.assertEqual(json.load(f), {"items": {}})
+                self.assertEqual(json.load(f), {"items": []})
 
     def test_gather_tiebreak_regrow_immediate_and_hold_full(self):
         g = _tuning()["gather"]
@@ -118,7 +125,7 @@ class TestGatherRules(unittest.TestCase):
                         {"id": "N10", "kind": "bong_sung", "pos": [21, 0]},
                         {"id": "N2", "kind": "bong_dien_dien", "pos": [19, 0]},
                     ],
-                    "hold": ["ca_loc"] * (g["hold_capacity"] - 1),
+                    "hold": [{"id": f"I{i}", "kind": "ca_loc", "fresh": 100} for i in range(1, g["hold_capacity"])],
                     "random_fish": False,
                 }
             })
@@ -183,7 +190,7 @@ class TestGatherRules(unittest.TestCase):
                         {"id": "F3", "kind": "ca_loc", "pos": [20.5, 5]},
                     ],
                     "random_fish": False,  # v1.1: tắt cá bơi để giữ nguyên vị trí fixture kiểm cooldown/hold_full
-                    "hold": ["bong_sung"] * (g["hold_capacity"] - 3),  # còn đúng 3 ô
+                    "hold": [{"id": f"I{i}", "kind": "bong_sung", "fresh": 100} for i in range(1, g["hold_capacity"] - 2)],  # còn đúng 3 ô
                 }
             })
             # F3 gần nhất (0.5m, yield 1), sau khi bắt F3 còn 2 ô.
@@ -238,23 +245,26 @@ class TestGatherRules(unittest.TestCase):
             self.assertEqual(len(events(rows, "fish_caught")), 1)
             self.assertEqual(rows[-1]["reason"], "time")
             with open(inv, encoding="utf-8") as f:
-                self.assertEqual(json.load(f), {"items": {"ca_loc": 1}})
+                data = json.load(f)
+                self.assertEqual(len(data["items"]), 1)
+                self.assertEqual(data["items"][0]["kind"], "ca_loc")
+                self.assertEqual(data["items"][0]["fresh"], 100)
 
 
 class TestQuanRules(unittest.TestCase):
     def test_customer_schedule_and_no_dish(self):
         # Kho rỗng -> tick 120 phát no_dish; time_left_ticks ngắn vẫn theo phase_tick 120
         with Workdir() as w:
-            sc = write_json(w.path("sc.json"), {"quan": {"stock": {}, "time_left_ticks": 130}})
+            sc = write_json(w.path("sc.json"), {"quan": {"stock": [], "time_left_ticks": 130}})
             code, err = run_headless("--mode", "quan", "--seed", "1", "--ticks", "130", "--scenario", sc, "--out", w.path("o.jsonl"))
             self.assertEqual(code, 0, err)
             rows = read_jsonl(w.path("o.jsonl"))
             nd = events(rows, "no_dish")
             self.assertEqual([e["tick"] for e in nd], [120])
 
-        # v1.1: 4 bàn (T1..T4). Tick 120 nhận C1 ở T1 (giữ ca_loc); tick 1020 còn bàn T2 nhưng hết nguyên liệu -> phát no_dish
+        # v1.1/v1.2: 4 bàn (T1..T4). Tick 120 nhận C1 ở T1; tick 1020 còn bàn T2 nhưng hết nguyên liệu -> phát no_dish
         with Workdir() as w:
-            sc = write_json(w.path("sc.json"), {"quan": {"stock": {"ca_loc": 1}}})
+            sc = write_json(w.path("sc.json"), {"quan": {"stock": [{"id": "I1", "kind": "ca_loc", "fresh": 100}]}})
             code, err = run_headless("--mode", "quan", "--seed", "1", "--ticks", "1050", "--scenario", sc, "--out", w.path("o.jsonl"))
             self.assertEqual(code, 0, err)
             rows = read_jsonl(w.path("o.jsonl"))
@@ -268,7 +278,7 @@ class TestQuanRules(unittest.TestCase):
         with Workdir() as w:
             sc = write_json(w.path("sc.json"), {
                 "quan": {
-                    "stock": {},
+                    "stock": [],
                     "customers": [
                         {"id": f"C{i}", "table_id": f"T{i}", "dish_id": "ca_loc_nuong_trui", "order_status": "unfulfillable"}
                         for i in range(1, 5)
@@ -326,39 +336,19 @@ class TestQuanRules(unittest.TestCase):
         with Workdir() as w:
             sc = write_json(w.path("sc.json"), {
                 "quan": {
-                    "player": {"pos": [2, 8]},
-                    "tables": [{"id": "T1", "pos": [2, 7]}],  # trong tầm nhưng xa hơn B1 (0 vs 1)
-                    "stock": {"ca_linh": 3, "bong_dien_dien": 1},
-                    "customers": [{"id": "C1", "table_id": "T1", "dish_id": "lau_ca_linh_dien_dien"}],
-                    "random_customers": False,
-                }
-            })
-            # Tick 0: đứng tại B1 -> interact nấu. Tick 1+cook_ticks: vừa chín (ready_ticks=0).
-            # Tick 1+cook_ticks+1: ready_ticks=1 -> nhặt ở tick đó (frame k = cook_ticks+2 -> step k+1 = cook_ticks+3).
-            pick_frame = cook_ticks + 2
-            serve_frame = cook_ticks + 4
-            inp = write_json(
-                w.path("in.json"),
-                frames(
-                    {"tick": 0, "interact": True},
-                    {"tick": 1, "interact": False},
-                    {"tick": pick_frame, "interact": True},
-                    {"tick": pick_frame + 1, "move": [0, -1], "interact": False},  # đi sát T1 [2,7]
-                    {"tick": serve_frame, "move": [0, 0], "interact": True},
-                ),
-            )
-            # đặt T1 ở [2, 7.6] để không cần đi quá xa; actually move down in 2 ticks at 4m/s only moves little, let's place T1 at [2, 7.8] or just use interact at [2, 7.2]
-            # Let's place player at [2, 7.3] so B1 [2,8] is 0.7m (closer!) and T1 [2,6.5] is 0.8m... wait: if B1 is always closer, player never reaches T1 without moving!
-            # Instead, move down from [2, 7.3] to [2, 6.7] between pick and serve (takes ~20 ticks).
-            sc = write_json(w.path("sc.json"), {
-                "quan": {
                     "player": {"pos": [2, 7.3]},
                     "tables": [{"id": "T1", "pos": [2, 6.5]}],
-                    "stock": {"ca_linh": 3, "bong_dien_dien": 1},
+                    "stock": [
+                        {"id": "I1", "kind": "ca_linh", "fresh": 100},
+                        {"id": "I2", "kind": "ca_linh", "fresh": 100},
+                        {"id": "I3", "kind": "ca_linh", "fresh": 100},
+                        {"id": "I4", "kind": "bong_dien_dien", "fresh": 100},
+                    ],
                     "customers": [{"id": "C1", "table_id": "T1", "dish_id": "lau_ca_linh_dien_dien"}],
                     "random_customers": False,
                 }
             })
+            pick_frame = cook_ticks + 2
             serve_frame = pick_frame + 30
             inp = write_json(
                 w.path("in.json"),
@@ -379,10 +369,11 @@ class TestQuanRules(unittest.TestCase):
             rows = read_jsonl(w.path("o.jsonl"))
             snaps = {s["tick"]: s for s in snapshots(rows)}
 
+            # v1.2: ở tick 1 kho hao 1 tick (99.9958...) -> base_price = floor(120 * 99.9958 / 100) = 119, tip = floor(119 * 0.2) = 23
             cs = events(rows, "cook_started")[0]
             self.assertEqual(cs["tick"], 1)
-            self.assertEqual(cs["data"]["items"], ["bong_dien_dien", "ca_linh", "ca_linh", "ca_linh"])
-            self.assertEqual(cs["data"]["base_price"], 120)
+            self.assertEqual([x["id"] for x in cs["data"]["items"]], ["I4", "I1", "I2", "I3"])
+            self.assertEqual(cs["data"]["base_price"], 119)
 
             dr = events(rows, "dish_ready")[0]
             self.assertEqual(dr["tick"], 1 + cook_ticks)
@@ -394,20 +385,20 @@ class TestQuanRules(unittest.TestCase):
 
             sv = events(rows, "served")[0]
             self.assertEqual(sv["tick"], serve_frame + 1)
-            self.assertEqual(sv["data"]["base_price"], 120)
-            self.assertEqual(sv["data"]["tip"], 24)
+            self.assertEqual(sv["data"]["base_price"], 119)
+            self.assertEqual(sv["data"]["tip"], 23)
 
             pd = events(rows, "paid")[0]
             self.assertEqual(pd["tick"], serve_frame + 1 + eat_ticks)
             self.assertEqual(pd["data"], {
-                "order_id": "C1", "table_id": "T1", "base_price": 120, "tip": 24,
-                "amount": 144, "reason": "finished_eating",
+                "order_id": "C1", "table_id": "T1", "base_price": 119, "tip": 23,
+                "amount": 142, "reason": "finished_eating",
             })
             end_row = rows[-1]
-            self.assertEqual(end_row["money"], 144)
-            self.assertEqual(end_row["earned"], 144)
+            self.assertEqual(end_row["money"], 142)
+            self.assertEqual(end_row["earned"], 142)
             self.assertTrue(close(end_row["reputation"], 3.2, 0.001))
-            self.assertEqual(end_row["score"], 144 + 300)
+            self.assertEqual(end_row["score"], 142 + 300)
 
     def test_tip_boundary_and_serve_at_zero_patience(self):
         # patience=1801 -> sau bước 1 còn 1800 (đúng 50% của 3600) -> được boa
@@ -537,9 +528,10 @@ class TestScenarioValidationAndDeterminism(unittest.TestCase):
     def test_invalid_quan_scenarios_exit_2_without_output(self):
         bad_blocks = [
             # giữ chỗ quá tồn kho
-            {"stock": {}, "customers": [{"id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui"}]},
-            # giữ khác công thức
-            {"stock": {"ca_loc": 2}, "customers": [{"id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui", "reserved": {"ca_loc": 2}}]},
+            {"stock": [], "customers": [{"id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui"}]},
+            # giữ khác công thức (v1.2 dùng mảng id cá thể)
+            {"stock": [{"id": "I1", "kind": "ca_loc", "fresh": 100}, {"id": "I2", "kind": "ca_loc", "fresh": 100}],
+             "customers": [{"id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui", "reserved": ["I1", "I2"]}]},
             # assigned thiếu món ở bếp/tay
             {"customers": [{"id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui", "order_status": "assigned"}]},
             # assigned xuất hiện cả ở bếp và tay
@@ -574,7 +566,15 @@ class TestScenarioValidationAndDeterminism(unittest.TestCase):
 
     def test_quan_deterministic_bytes(self):
         with Workdir() as w:
-            sc = write_json(w.path("sc.json"), {"quan": {"stock": {"ca_loc": 5, "bong_sung": 6, "ca_linh": 6, "bong_dien_dien": 3}}})
+            sc = write_json(w.path("sc.json"), {"quan": {"stock": [
+                {"id": "I1", "kind": "ca_loc", "fresh": 100},
+                {"id": "I2", "kind": "bong_sung", "fresh": 100},
+                {"id": "I3", "kind": "bong_sung", "fresh": 100},
+                {"id": "I4", "kind": "ca_linh", "fresh": 100},
+                {"id": "I5", "kind": "ca_linh", "fresh": 100},
+                {"id": "I6", "kind": "ca_linh", "fresh": 100},
+                {"id": "I7", "kind": "bong_dien_dien", "fresh": 100},
+            ]}})
             inp = write_json(w.path("in.json"), frames({"tick": 0, "move": [-1, 1]}, {"tick": 130, "interact": True}))
             for i in (1, 2):
                 code, err = run_headless("--mode", "quan", "--seed", "19", "--ticks", "300", "--scenario", sc, "--inputs", inp, "--out", w.path(f"q{i}.jsonl"))
