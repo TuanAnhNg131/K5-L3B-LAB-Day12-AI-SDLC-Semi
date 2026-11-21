@@ -49,12 +49,26 @@
   .shop-item { background: rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; border: 1px solid rgba(255,255,255,0.16); }
   .shop-item h3 { margin: 0 0 6px; color: var(--gold); font-size: 20px; }
   .slider-row { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; font-size: 18px; }
-  .slider-row input { width: 55%; }
+  .slider-row input[type="range"] { width: 55%; }
   .hint { font-size: 15px; color: #b7ccd6; margin-top: 10px; }
+  #sfx-subtitle {
+    position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85); color: #fff59d; border: 2px solid #ffd54f;
+    border-radius: 10px; padding: 8px 18px; font-size: 18px; font-weight: 700;
+    z-index: 15; display: none; pointer-events: none;
+  }
+  body.high-contrast { background: #000; color: #fff; }
+  body.high-contrast .card { background: #000; border: 3px solid #ff0; color: #fff; }
+  body.high-contrast h1, body.high-contrast h2, body.high-contrast .shop-item h3 { color: #ff0; }
+  body.high-contrast .list, body.high-contrast .shop-item { background: #111; border: 2px solid #fff; color: #fff; }
+  body.high-contrast button { background: #000; color: #fff; border: 2px solid #fff; }
+  body.high-contrast button.primary { background: #ff0; color: #000; border-color: #ff0; }
+  body.high-contrast #sfx-subtitle { background: #000; color: #ff0; border: 3px solid #ff0; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="sfx-subtitle"></div>
 
 <div id="ov-menu" class="overlay">
   <div class="card">
@@ -63,10 +77,11 @@
     <div class="list">
       <div><strong>Di chuyển:</strong> WASD / Phím mũi tên</div>
       <div><strong>Tương tác / Hái / Nấu / Phục vụ:</strong> E &nbsp;|&nbsp; <strong>Bắt cá:</strong> Space</div>
-      <div><strong>Tạm dừng:</strong> Esc / P &nbsp;|&nbsp; <strong>Chơi lại:</strong> R</div>
+      <div><strong>Tạm dừng:</strong> Esc / P &nbsp;|&nbsp; <strong>Tương phản cao:</strong> H &nbsp;|&nbsp; <strong>Chơi lại:</strong> R</div>
     </div>
     <div class="btn-row">
       <button class="primary" onclick="startGame()">Chơi ngay</button>
+      <button onclick="toggleHighContrast()">Tương phản cao (H)</button>
       <button onclick="openSettings()">Cài đặt âm thanh</button>
       <button onclick="quitGame()">Thoát</button>
     </div>
@@ -89,7 +104,8 @@
     <p>Mọi đồng hồ và bộ đếm đang được giữ nguyên.</p>
     <div class="btn-row">
       <button class="primary" onclick="togglePause()">Tiếp tục (Esc / P)</button>
-      <button onclick="openSettings()">Cài đặt âm thanh</button>
+      <button onclick="toggleHighContrast()">Tương phản cao (H)</button>
+      <button onclick="openSettings()">Cài đặt</button>
       <button onclick="returnToMenu()">Về menu chính</button>
     </div>
   </div>
@@ -97,11 +113,13 @@
 
 <div id="ov-settings" class="overlay">
   <div class="card">
-    <h2>Cài đặt âm thanh (Audio)</h2>
+    <h2>Cài đặt Âm thanh & Hiển thị</h2>
     <div class="list">
       <div class="slider-row"><label>Âm lượng tổng (Master)</label><input id="vol-master" type="range" min="0" max="100" oninput="saveVol()"></div>
       <div class="slider-row"><label>Nhạc nền (Music)</label><input id="vol-music" type="range" min="0" max="100" oninput="saveVol()"></div>
       <div class="slider-row"><label>Hiệu ứng (SFX)</label><input id="vol-sfx" type="range" min="0" max="100" oninput="saveVol()"></div>
+      <div class="slider-row"><label>Chế độ tương phản cao (H)</label><input id="opt-hc" type="checkbox" onchange="setHighContrast(this.checked)"></div>
+      <div class="slider-row"><label>Phụ đề hiệu ứng âm thanh (SFX)</label><input id="opt-sub" type="checkbox" onchange="savePrefs()"></div>
     </div>
     <div class="btn-row"><button class="primary" onclick="closeSettings()">Đóng</button></div>
   </div>
@@ -158,20 +176,46 @@ let lastPhaseKey = "", lastDaySeen = 0, seenEvents = new Set(), introTimer = nul
 const down = new Set();
 const MOVE_KEYS = { w: "u", arrowup: "u", s: "d", arrowdown: "d", a: "l", arrowleft: "l", d: "r", arrowright: "r" };
 
-// ---------- Audio (WebAudio synthesized Mekong SFX + Music, persisted in localStorage) ----------
-let audioCtx = null, musicTimer = null;
+// ---------- Audio & Accessibility Preferences (persisted in localStorage) ----------
+let audioCtx = null, musicTimer = null, subTimer = null;
 const AUDIO_KEY = "chonoi_audio_settings_v1";
+const PREF_KEY = "chonoi_ui_prefs_v1";
 const vol = Object.assign({ master: 70, music: 45, sfx: 80 }, JSON.parse(localStorage.getItem(AUDIO_KEY) || "{}"));
+const uiPrefs = Object.assign({ highContrast: false, subtitles: true }, JSON.parse(localStorage.getItem(PREF_KEY) || "{}"));
+if (uiPrefs.highContrast) document.body.classList.add("high-contrast");
+
 function initVolUI() {
   document.getElementById("vol-master").value = vol.master;
   document.getElementById("vol-music").value = vol.music;
   document.getElementById("vol-sfx").value = vol.sfx;
+  document.getElementById("opt-hc").checked = Boolean(uiPrefs.highContrast);
+  document.getElementById("opt-sub").checked = Boolean(uiPrefs.subtitles);
 }
 function saveVol() {
   vol.master = +document.getElementById("vol-master").value;
   vol.music = +document.getElementById("vol-music").value;
   vol.sfx = +document.getElementById("vol-sfx").value;
   localStorage.setItem(AUDIO_KEY, JSON.stringify(vol));
+}
+function savePrefs() {
+  uiPrefs.subtitles = Boolean(document.getElementById("opt-sub").checked);
+  localStorage.setItem(PREF_KEY, JSON.stringify(uiPrefs));
+}
+function setHighContrast(on) {
+  uiPrefs.highContrast = Boolean(on);
+  document.body.classList.toggle("high-contrast", uiPrefs.highContrast);
+  const el = document.getElementById("opt-hc");
+  if (el) el.checked = uiPrefs.highContrast;
+  localStorage.setItem(PREF_KEY, JSON.stringify(uiPrefs));
+}
+function toggleHighContrast() { setHighContrast(!uiPrefs.highContrast); }
+function showSubtitle(txt) {
+  if (!uiPrefs.subtitles || !txt) return;
+  const el = document.getElementById("sfx-subtitle");
+  el.textContent = txt;
+  el.style.display = "block";
+  clearTimeout(subTimer);
+  subTimer = setTimeout(() => { el.style.display = "none"; }, 2200);
 }
 function ensureAudio() {
   if (!audioCtx) {
@@ -386,6 +430,7 @@ addEventListener("keydown", (e) => {
   if (screenState === "intro") { e.preventDefault(); dismissIntro(); return; }
   if (e.repeat) { if (k === " " || k.startsWith("arrow")) e.preventDefault(); return; }
   if (k === "escape" || k === "p") { e.preventDefault(); togglePause(); return; }
+  if (k === "h") { e.preventDefault(); toggleHighContrast(); return; }
   if (k === "r") { restartRun(); return; }
   if (snap && snap.phase === "shop" && screenState === "play") {
     if (k === "1") buyUpgrade("oxygen");
@@ -420,11 +465,17 @@ async function poll() {
       const key = `${ev.tick}:${ev.name}:${JSON.stringify(ev.data)}`;
       if (seenEvents.has(key)) return;
       seenEvents.add(key);
-      if (ev.name === "gather" || ev.name === "fish_caught") tone(587, 0.14, "sine", 0.2);
-      else if (ev.name === "monster_hit" || ev.name === "choke" || ev.name === "spoiled") tone(140, 0.25, "sawtooth", 0.28);
-      else if (ev.name === "cook_started") tone(330, 0.15, "triangle", 0.15);
-      else if (ev.name === "dish_ready") tone(660, 0.22, "sine", 0.22);
-      else if (ev.name === "paid" || ev.name === "bought") tone(784, 0.25, "sine", 0.25);
+      if (ev.name === "gather") { tone(587, 0.14, "sine", 0.2); showSubtitle("[SFX: Hái rau thành công]"); }
+      else if (ev.name === "fish_caught") { tone(659, 0.16, "sine", 0.22); showSubtitle("[SFX: Bắt trúng đàn cá]"); }
+      else if (ev.name === "dive") { tone(260, 0.12, "sine", 0.14); showSubtitle("[SFX: Ùm — Lặn xuống nước]"); }
+      else if (ev.name === "surface") { tone(440, 0.12, "sine", 0.14); showSubtitle("[SFX: Ngoi lên mặt nước]"); }
+      else if (ev.name === "monster_hit") { tone(140, 0.28, "sawtooth", 0.3); showSubtitle("[SFX: RẦM! Cá Sấu cắn]"); }
+      else if (ev.name === "choke") { tone(130, 0.25, "sawtooth", 0.28); showSubtitle("[SFX: Khụ! Ngạt thở mất Máu]"); }
+      else if (ev.name === "spoiled") { tone(190, 0.22, "square", 0.18); showSubtitle("[SFX: Tít! Nguyên liệu bị ươn]"); }
+      else if (ev.name === "cook_started") { tone(330, 0.15, "triangle", 0.15); showSubtitle("[SFX: Xèo xèo — Bắt đầu nấu]"); }
+      else if (ev.name === "dish_ready") { tone(660, 0.22, "sine", 0.22); showSubtitle("[SFX: Keng! Món đã chín]"); }
+      else if (ev.name === "paid" || ev.name === "bought") { tone(784, 0.25, "sine", 0.25); showSubtitle(ev.name === "paid" ? "[SFX: Leng keng — Khách trả tiền]" : "[SFX: Leng keng — Đã mua nâng cấp]"); }
+      else if (ev.name === "customer_left" && ev.data && ev.data.reason === "patience") { tone(165, 0.25, "triangle", 0.22); showSubtitle("[SFX: Hừ! Khách bỏ đi]"); }
     });
 
     if (snap.finished) {
@@ -483,6 +534,7 @@ function depthZone(d) {
 }
 
 function drawGather(w, h) {
+  const hc = uiPrefs.highContrast;
   const meta = snap.meta || {};
   const b = meta.bounds || { x: [0, 100], d: [0, 30] };
   const X = b.x[1], D = b.d[1], SKY = 6;
@@ -491,15 +543,20 @@ function drawGather(w, h) {
   const ox = (w - s * (X + 4)) / 2 + 2 * s, oy = top + SKY * s;
   const sx = (x) => ox + x * s, sy = (d) => oy + d * s;
 
-  // Bình minh chợ nổi & nước phù sa
-  const skyGrad = ctx.createLinearGradient(0, top, 0, oy);
-  skyGrad.addColorStop(0, "#ffd8b8"); skyGrad.addColorStop(1, "#bfe5f5");
-  ctx.fillStyle = skyGrad; ctx.fillRect(0, top, w, SKY * s);
-
-  const waterGrad = ctx.createLinearGradient(0, oy, 0, sy(D));
-  waterGrad.addColorStop(0, "#5c9db2"); waterGrad.addColorStop(0.35, "#366c85"); waterGrad.addColorStop(1, "#0b1f30");
-  ctx.fillStyle = waterGrad; ctx.fillRect(sx(0), oy, X * s, D * s);
-  ctx.strokeStyle = "#e9f7ff"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(sx(0), oy); ctx.lineTo(sx(X), oy); ctx.stroke();
+  // Bình minh chợ nổi & nước phù sa (hoặc nền tương phản cao)
+  if (hc) {
+    ctx.fillStyle = "#111"; ctx.fillRect(0, top, w, SKY * s);
+    ctx.fillStyle = "#000"; ctx.fillRect(sx(0), oy, X * s, D * s);
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx(0), oy); ctx.lineTo(sx(X), oy); ctx.stroke();
+  } else {
+    const skyGrad = ctx.createLinearGradient(0, top, 0, oy);
+    skyGrad.addColorStop(0, "#ffd8b8"); skyGrad.addColorStop(1, "#bfe5f5");
+    ctx.fillStyle = skyGrad; ctx.fillRect(0, top, w, SKY * s);
+    const waterGrad = ctx.createLinearGradient(0, oy, 0, sy(D));
+    waterGrad.addColorStop(0, "#5c9db2"); waterGrad.addColorStop(0.35, "#366c85"); waterGrad.addColorStop(1, "#0b1f30");
+    ctx.fillStyle = waterGrad; ctx.fillRect(sx(0), oy, X * s, D * s);
+    ctx.strokeStyle = "#e9f7ff"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(sx(0), oy); ctx.lineTo(sx(X), oy); ctx.stroke();
+  }
 
   // Dừa nước ven bờ
   for (let kx = 10; kx <= 95; kx += 22) {
@@ -577,23 +634,24 @@ function drawGather(w, h) {
     if (prompt) text(prompt, px, py - 1.5 * s, { size: 16, align: "center", color: "#fff59d", bold: true });
   }
 
-  // Viền tím cảnh báo Thủy quái
+  // Cảnh báo Thủy quái & Oxy dễ nhận biết (chữ + biểu tượng, tương thích tương phản cao)
   if (monsterClose) {
-    ctx.strokeStyle = "#c74dff"; ctx.lineWidth = 10; ctx.strokeRect(5, 5, w - 10, h - 10);
-    text("⚠ THỦY QUÁI GẦN!", w / 2, 112, { size: 22, align: "center", color: "#f39cff", bold: true });
+    ctx.strokeStyle = hc ? "#ff0" : "#c74dff"; ctx.lineWidth = 10; ctx.strokeRect(5, 5, w - 10, h - 10);
+    text("⚠ THỦY QUÁI GẦN!", w / 2, 114, { size: 22, align: "center", color: hc ? "#ff0" : "#f39cff", bold: true });
   }
 
   // HUD trên (>= 18px)
   const lowTime = (snap.time_left_ticks || 0) <= 1800;
-  text(`⏱ ${fmtTime(snap.time_left_ticks)}`, 16, 34, { size: 24, color: lowTime ? "#ff6b6b" : "#f8f2e4", bold: true });
+  text(`⏱ ${fmtTime(snap.time_left_ticks)}`, 16, 34, { size: 24, color: lowTime ? (hc ? "#ff2a2a" : "#ff6b6b") : (hc ? "#fff" : "#f8f2e4"), bold: true });
   if (p) {
     const lowOxy = p.oxygen_ticks < p.oxygen_max_ticks * 0.25;
-    bar(130, 14, 240, 24, p.oxygen_ticks / p.oxygen_max_ticks, lowOxy ? "#ef5350" : "#4fc3f7", `Oxy ${Math.ceil(p.oxygen_ticks / 60)}s`);
+    bar(130, 14, 240, 24, p.oxygen_ticks / p.oxygen_max_ticks, lowOxy ? (hc ? "#ff2a2a" : "#ef5350") : (hc ? "#0ff" : "#4fc3f7"), `Oxy ${Math.ceil(p.oxygen_ticks / 60)}s`);
     let hs = ""; for (let i = 0; i < p.hp_max; i++) hs += i < p.hp ? "♥" : "♡";
-    text(hs, 390, 36, { size: 26, color: "#ff6b81", bold: true });
-    text(`Độ sâu: ${p.pos[1].toFixed(1)}m (${depthZone(p.pos[1])})`, 16, 68, { size: 18, color: "#cde4ef" });
-    if (p.oxygen_ticks === 0 && !p.at_surface) text("HẾT HƠI!", 520, 36, { size: 22, color: "#ff5252", bold: true });
-    if (p.catch_cd_ticks > 0) text(`Hồi bắt: ${(p.catch_cd_ticks / 60).toFixed(1)}s`, 340, 68, { size: 18, color: "#ffd54f" });
+    text(hs, 390, 36, { size: 26, color: hc ? "#ff2a2a" : "#ff6b81", bold: true });
+    text(`Độ sâu: ${p.pos[1].toFixed(1)}m (${depthZone(p.pos[1])})`, 16, 68, { size: 18, color: hc ? "#fff" : "#cde4ef" });
+    if (p.oxygen_ticks === 0 && !p.at_surface) text("❗ HẾT HƠI — NỔI LÊN NGAY!", 520, 36, { size: 22, color: hc ? "#ff0" : "#ff5252", bold: true });
+    else if (lowOxy && !p.at_surface) text("🫁 OXY SẮP HẾT!", 520, 36, { size: 22, color: hc ? "#ff0" : "#ffb74d", bold: true });
+    if (p.catch_cd_ticks > 0) text(`Hồi bắt: ${(p.catch_cd_ticks / 60).toFixed(1)}s`, 340, 68, { size: 18, color: hc ? "#ff0" : "#ffd54f" });
   }
   if (snap.day_plan) {
     const counts = {};
@@ -625,6 +683,7 @@ function drawGather(w, h) {
 }
 
 function drawQuan(w, h) {
+  const hc = uiPrefs.highContrast;
   const meta = snap.meta || {};
   const b = meta.bounds || { x: [0, 16], z: [0, 10] };
   const X = b.x[1], Z = b.z[1], top = 92, bottom = 52;
@@ -632,8 +691,8 @@ function drawQuan(w, h) {
   const ox = (w - s * X) / 2, oy = top;
   const sx = (x) => ox + x * s, sy = (z) => oy + (Z - z) * s;
 
-  ctx.fillStyle = "#b68851"; ctx.fillRect(sx(0), sy(Z), X * s, Z * s);
-  ctx.strokeStyle = "#5c3b1e"; ctx.lineWidth = 5; ctx.strokeRect(sx(0), sy(Z), X * s, Z * s);
+  ctx.fillStyle = hc ? "#000" : "#b68851"; ctx.fillRect(sx(0), sy(Z), X * s, Z * s);
+  ctx.strokeStyle = hc ? "#fff" : "#5c3b1e"; ctx.lineWidth = 5; ctx.strokeRect(sx(0), sy(Z), X * s, Z * s);
   // Đèn dây vàng ấm áp
   for (let lx = 2; lx <= 14; lx += 3) {
     ctx.fillStyle = "#ffe082"; ctx.beginPath(); ctx.arc(sx(lx), sy(Z) - 6, 6, 0, Math.PI * 2); ctx.fill();
@@ -650,19 +709,26 @@ function drawQuan(w, h) {
 
   const patMax = (meta.patience_s || 60) * 60;
   const byTable = {}; (snap.customers || []).forEach((c) => (byTable[c.table_id] = c));
+  const angryTables = [];
   (snap.tables || []).forEach((tb) => {
-    ctx.fillStyle = "#7a4e26"; ctx.beginPath(); ctx.arc(sx(tb.pos[0]), sy(tb.pos[1]), 0.9 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = hc ? "#222" : "#7a4e26"; ctx.beginPath(); ctx.arc(sx(tb.pos[0]), sy(tb.pos[1]), 0.9 * s, 0, Math.PI * 2); ctx.fill();
+    if (hc) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); }
     text(tb.id, sx(tb.pos[0]), sy(tb.pos[1]) + 6, { size: 18, align: "center", bold: true });
     const c = byTable[tb.id];
     if (c) {
       const cx = sx(tb.pos[0]), cy = sy(tb.pos[1]) - 1.45 * s;
       const lowPat = c.state === "waiting" && c.patience_ticks_left < patMax * 0.25;
-      ctx.fillStyle = c.state === "eating" ? "#7bc67b" : (lowPat ? "#ff5252" : "#f4b6c2");
+      if (lowPat) angryTables.push(tb.id);
+      ctx.fillStyle = c.state === "eating" ? (hc ? "#0f0" : "#7bc67b") : (lowPat ? "#ff2a2a" : (hc ? "#ff0" : "#f4b6c2"));
       ctx.beginPath(); ctx.arc(cx, cy, 0.58 * s, 0, Math.PI * 2); ctx.fill();
       text(DISH_NAME[c.dish_id] || c.dish_id, cx, cy - 0.8 * s, { size: 15, align: "center", color: "#fff", bold: true });
+      if (lowPat) text("💢 SẮP GIẬN!", cx, cy - 1.5 * s, { size: 16, align: "center", color: hc ? "#ff0" : "#ff8a80", bold: true });
       if (c.state === "waiting") bar(cx - 0.9 * s, cy + 0.7 * s, 1.8 * s, 8, c.patience_ticks_left / patMax, lowPat ? "#ff1744" : "#81c784");
     }
   });
+  if (angryTables.length) {
+    text(`💢 KHÁCH SẮP GIẬN: ${angryTables.join(", ")}!`, w / 2, 118, { size: 22, align: "center", color: hc ? "#ff0" : "#ff8a80", bold: true });
+  }
 
   const p = snap.player;
   if (p) {
@@ -696,7 +762,7 @@ function drawQuan(w, h) {
 function frame() {
   requestAnimationFrame(frame);
   const [w, h] = fit();
-  ctx.fillStyle = "#0f1b24"; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = uiPrefs.highContrast ? "#000" : "#0f1b24"; ctx.fillRect(0, 0, w, h);
   if (snap) {
     if (snap.phase === "quan") drawQuan(w, h);
     else if (snap.phase === "gather") drawGather(w, h);
