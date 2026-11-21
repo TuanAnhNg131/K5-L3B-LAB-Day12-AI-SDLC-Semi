@@ -3,9 +3,13 @@
 > Cập nhật file này qua các phase (lịch sử git phải cho thấy điều đó). Ngắn gọn, có lệnh chạy thật.
 
 ## Lệnh
-- Test: `PYTHONPATH=tests:. python3 -m unittest discover -s tests -v`
-- Headless: `python3 -m chonoi.headless --mode gather|quan --seed 1 --ticks 600 --out out.jsonl`
-- Chơi thử trên trình duyệt: `python3 -m chonoi.live --mode gather|quan` (mở địa chỉ in ra; WASD, E, Space, R)
+- Test (Linux/macOS): `PYTHONPATH=tests:. python3 -m unittest discover -s tests -v`
+- Test (Windows PowerShell): `$env:PYTHONPATH="tests;."; $env:http_proxy=""; $env:https_proxy=""; python -m unittest discover -s tests -v`
+- Headless: `python -m chonoi.headless --mode gather|quan --seed 1 --ticks 600 --out out.jsonl` (trên Linux/macOS dùng `python3`)
+- Chơi thử trên trình duyệt: `python -m chonoi.live --mode gather|quan` (mở địa chỉ in ra; WASD, E, Space, R)
+
+## Trạng thái Phase & quy ước cập nhật
+- **Phase 1 (Test Contract v1.0):** `Semi` (1 thành viên: `TuanAnhNg131`). Giữ `headless_cmd` trong `game.contract.json` là `python3 -m chonoi.headless` cho CI/chấm tự động; `tests/helpers.py` tự động ánh xạ sang `sys.executable` khi chạy cục bộ trên Windows.
 
 ## Cấu trúc & quy ước
 - (Starter Python là TÙY CHỌN; nhóm có thể dùng ngôn ngữ khác nếu giữ Test Contract.) Khung do giảng viên cấp: `chonoi/{headless,inputs,scenario,contract,rng,ids,jsonl,inventory,runner,live}.py` và `chonoi/web/`. Hạn chế sửa; nếu phải sửa thì báo cả nhóm và ghi lại lý do.
@@ -26,4 +30,5 @@
 - Sáng tạo thêm được khuyến khích nhưng phải tắt ở headless (xem README, mục "Tự do sáng tạo").
 
 ## Skills / hooks của nhóm
-- (Ghi tên và khi nào dùng; tối thiểu 2 skill/hook/command nhóm tự viết, đặt ở `.agents/skills/` hoặc tương đương.)
+- `.agents/skills/verify-contract/SKILL.md`: chạy kiểm thử hợp đồng, kiểm tra tính tất định từng byte, mã thoát `2`, smoke hai tiến trình và lưu bằng chứng vào `docs/proof/phase-<n>/`. Dùng sau khi xong mỗi lát hoặc trước khi chốt phase.
+- `.agents/skills/phase-release/SKILL.md`: rà soát DoD, kiểm tra tài liệu bắt buộc (`verification`, `clarify`, `ai-usage-log`, `CHANGELOG`, `README`) trước khi commit và gắn tag `phase-<n>`. Dùng ở cuối mỗi phase.
