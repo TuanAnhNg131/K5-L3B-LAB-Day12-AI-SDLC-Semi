@@ -20,18 +20,22 @@ Chạy từ repo sạch trên macOS / Linux (chỉ dùng Python 3.12+ chuẩn, k
 ```bash
 git clone https://github.com/TuanAnhNg131/K5-L3B-LAB-Day12-AI-SDLC-Semi.git && cd K5-L3B-LAB-Day12-AI-SDLC-Semi
 PYTHONPATH=tests:. python3 -m unittest discover -s tests -v        # chạy toàn bộ test bằng 1 lệnh
-python3 -m chonoi.live --mode gather                                # chơi thử trên trình duyệt (hoặc --mode quan)
+python3 -m chonoi.live --mode day                                   # chơi trọn vòng 5 ngày trên trình duyệt
 ```
 
-- **Điều khiển:** `WASD` / phím mũi tên để bơi hoặc di chuyển; `E` (`interact`) để cập bến / hái rau / nấu, bưng và phục vụ; `Space` (`catch`) để bắt cá khi lặn; `R` để chơi lại.
-- **Cách tính điểm:** `score = earned + 100 * floor(reputation)` (tiền tính theo nghìn đồng; `earned` gồm tiền món + boa).
+- **Điều khiển:** `WASD` / phím mũi tên để bơi hoặc di chuyển; `E` (`interact`) để cập bến / hái rau / nấu, bưng và phục vụ; `Space` (`catch`) để bắt cá khi lặn; `Esc` / `P` để tạm dừng; phím `1`, `2`, `Enter` trong Shop; `R` để chơi lại.
+- **Cách tính điểm:** `score = earned + 100 * floor(reputation)` (tiền tính theo nghìn đồng; `earned` gồm tiền món + boa, mua nâng cấp chỉ trừ `money`).
 - **Hợp đồng kho & sự kiện:** Xem chi tiết tại [`docs/contracts/README.md`](docs/contracts/README.md) và file mẫu [`docs/contracts/inventory.sample.json`](docs/contracts/inventory.sample.json).
 
-Game cần chế độ **headless** theo Test Contract (`python3 -m chonoi.headless --mode gather|quan …`) để được chạy và chấm tự động. Chi tiết khung kỹ thuật ở [`docs/STARTER.md`](docs/STARTER.md).
+Game cần chế độ **headless** theo Test Contract (`python3 -m chonoi.headless --mode gather|quan|day …`) để được chạy và chấm tự động. Chi tiết khung kỹ thuật ở [`docs/STARTER.md`](docs/STARTER.md).
 
 ## Tự do sáng tạo
 
 Ngoài phần đề yêu cầu, nhóm được **thêm** nhân vật, loài cá/cây, sinh vật, món, bản đồ, cơ chế, câu chuyện, đồ họa, âm nhạc… với ba điều kiện: **không phá phần cố định** (tắt ở headless), ghi mục **"Sáng tạo của nhóm"** trong README của nhóm, và **làm lõi đúng trước**.
+
+### Sáng tạo của nhóm
+- **Giao diện Chợ Nổi Miền Tây & Âm thanh WebAudio (chỉ chạy ở client trình duyệt, tắt hoàn toàn ở `headless`):** Vẽ trực quan sông phù sa, bờ dừa nước, nhà bè đèn dây vàng, Út Sen mặc áo bà ba/khăn rằn và kính lặn, hiệu ứng viền tím cảnh báo Cá Sấu Năm Chèo, cùng nhạc nền ngũ cung và hiệu ứng SFX tổng hợp bằng WebAudio API lưu cấu hình âm lượng (Master/Music/SFX) bền vững qua `localStorage`.
+- **Bằng chứng lõi vẫn đúng:** Toàn bộ quy tắc lõi trong `chonoi/sim/*` độc lập với UI và âm thanh; toàn bộ test hộp đen qua `headless_cmd` (`tests/test_smoke_p1.py`, `tests/test_p1_rules.py`, `tests/test_p2_rules.py`) đều đạt và tất định theo từng byte (xem [`docs/verification/phase-2.md`](docs/verification/phase-2.md)).
 
 ## Lịch 3 giờ
 

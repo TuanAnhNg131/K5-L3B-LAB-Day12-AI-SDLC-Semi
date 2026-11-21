@@ -182,6 +182,7 @@ class TestGatherRules(unittest.TestCase):
                         {"id": "F2", "kind": "ca_linh", "pos": [19, 5]},
                         {"id": "F3", "kind": "ca_loc", "pos": [20.5, 5]},
                     ],
+                    "random_fish": False,  # v1.1: tắt cá bơi để giữ nguyên vị trí fixture kiểm cooldown/hold_full
                     "hold": ["bong_sung"] * (g["hold_capacity"] - 3),  # còn đúng 3 ô
                 }
             })
@@ -251,7 +252,7 @@ class TestQuanRules(unittest.TestCase):
             nd = events(rows, "no_dish")
             self.assertEqual([e["tick"] for e in nd], [120])
 
-        # Có nguyên liệu -> đến ở 120, tới 1020 bàn T1 vẫn bận nên bỏ qua (không phát no_dish)
+        # v1.1: 4 bàn (T1..T4). Tick 120 nhận C1 ở T1 (giữ ca_loc); tick 1020 còn bàn T2 nhưng hết nguyên liệu -> phát no_dish
         with Workdir() as w:
             sc = write_json(w.path("sc.json"), {"quan": {"stock": {"ca_loc": 1}}})
             code, err = run_headless("--mode", "quan", "--seed", "1", "--ticks", "1050", "--scenario", sc, "--out", w.path("o.jsonl"))
@@ -261,6 +262,23 @@ class TestQuanRules(unittest.TestCase):
             self.assertEqual(len(arr), 1)
             self.assertEqual(arr[0]["tick"], 120)
             self.assertEqual(arr[0]["data"], {"order_id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui"})
+            self.assertEqual([e["tick"] for e in events(rows, "no_dish")], [1020])
+
+        # Khi cả 4 bàn đều kín khách -> bỏ lượt ở tick 120 (không phát customer_arrived lẫn no_dish)
+        with Workdir() as w:
+            sc = write_json(w.path("sc.json"), {
+                "quan": {
+                    "stock": {},
+                    "customers": [
+                        {"id": f"C{i}", "table_id": f"T{i}", "dish_id": "ca_loc_nuong_trui", "order_status": "unfulfillable"}
+                        for i in range(1, 5)
+                    ],
+                }
+            })
+            code, err = run_headless("--mode", "quan", "--seed", "1", "--ticks", "130", "--scenario", sc, "--out", w.path("o.jsonl"))
+            self.assertEqual(code, 0, err)
+            rows = read_jsonl(w.path("o.jsonl"))
+            self.assertEqual(events(rows, "customer_arrived"), [])
             self.assertEqual(events(rows, "no_dish"), [])
 
     def test_interact_tiebreak_and_no_fallback(self):

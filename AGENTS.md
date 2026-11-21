@@ -9,7 +9,8 @@
 - Chơi thử trên trình duyệt: `python -m chonoi.live --mode gather|quan` (mở địa chỉ in ra; WASD, E, Space, R)
 
 ## Trạng thái Phase & quy ước cập nhật
-- **Phase 1 (Test Contract v1.0):** `Semi` (1 thành viên: `TuanAnhNg131`). Giữ `headless_cmd` trong `game.contract.json` là `python3 -m chonoi.headless` cho CI/chấm tự động; `tests/helpers.py` tự động ánh xạ sang `sys.executable` khi chạy cục bộ trên Windows.
+- **Phase 2 (Test Contract v1.1):** `Semi` (`TuanAnhNg131`). Đã nâng cấp lên v1.1 (`--mode day --days 1..5`, 6 nguyên liệu, 6 món, 2 bếp 4 bàn, cá bơi/sinh, Cá Sấu `M1`/`M2`, Shop nâng cấp, `pause`, menu/HUD). Giữ `headless_cmd` trong `game.contract.json` là `python3 -m chonoi.headless` cho CI/chấm tự động.
+- Lệnh chơi đầy đủ theo ngày: `python -m chonoi.live --mode day --days 5` (hoặc `python3` trên Linux/macOS).
 
 ## Cấu trúc & quy ước
 - (Starter Python là TÙY CHỌN; nhóm có thể dùng ngôn ngữ khác nếu giữ Test Contract.) Khung do giảng viên cấp: `chonoi/{headless,inputs,scenario,contract,rng,ids,jsonl,inventory,runner,live}.py` và `chonoi/web/`. Hạn chế sửa; nếu phải sửa thì báo cả nhóm và ghi lại lý do.

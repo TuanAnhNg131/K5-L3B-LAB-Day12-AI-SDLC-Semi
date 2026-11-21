@@ -42,7 +42,8 @@ class Contract(unittest.TestCase):
             for key in ("oxygen_ticks", "hp", "oxygen_max_ticks", "hp_max", "at_surface"):
                 self.assertIn(key, s["player"])
             self.assertEqual(s["hold_capacity"], tuning_gather()["hold_capacity"])
-            self.assertEqual(len(s["fish"]), 6)
+            # v1.1: fish_initial là số lượng đàn cá ban đầu (8 đàn)
+            self.assertEqual(len(s["fish"]), tuning_gather()["fish_initial"])
             self.assertTrue(all(n["pos"][1] == 0 for n in s["nodes"]))
 
     def test_con_02_deterministic_bytes(self):
@@ -70,8 +71,10 @@ class Contract(unittest.TestCase):
     def test_con_03_old_and_future_modes_rejected(self):
         with Workdir() as w:
             out = w.path("o.jsonl")
-            for mode in ("river", "day"):
-                self.assertEqual(run_headless("--mode", mode, "--seed", "1", "--ticks", "0", "--out", out)[0], 2, mode)
+            # v1.1: --mode day đã được hỗ trợ; mode cũ 'river' và cờ --days sai phạm vi/mode vẫn bị từ chối với mã 2
+            self.assertEqual(run_headless("--mode", "river", "--seed", "1", "--ticks", "0", "--out", out)[0], 2)
+            self.assertEqual(run_headless("--mode", "gather", "--days", "1", "--seed", "1", "--ticks", "0", "--out", out)[0], 2)
+            self.assertEqual(run_headless("--mode", "day", "--days", "6", "--seed", "1", "--ticks", "0", "--out", out)[0], 2)
             self.assertFalse(os.path.exists(out))
             old = write_json(w.path("old.json"), {"river": {"hold": []}})
             self.assertEqual(run_headless("--mode", "gather", "--seed", "1", "--ticks", "0", "--scenario", old, "--out", out)[0], 2)
