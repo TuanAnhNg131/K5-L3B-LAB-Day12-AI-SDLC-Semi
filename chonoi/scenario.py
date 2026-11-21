@@ -5,7 +5,7 @@ import json
 import math
 
 from .errors import BadInput
-from .inventory import KINDS_V11, validate_items
+from .inventory import KINDS_V11, validate_item_list, validate_items
 
 GATHER_KEYS = {"player", "hold", "nodes", "fish", "monsters", "random_fish", "time_left_ticks"}
 GATHER_PLAYER_KEYS = {"pos", "vel", "heading_deg", "hp", "oxygen_ticks", "zero_oxy_ticks",
@@ -204,9 +204,7 @@ def _validate_gather(b, tuning):
     if "random_fish" in b and not isinstance(b["random_fish"], bool):
         raise BadInput("random_fish phải là boolean")
     if "hold" in b:
-        h = b["hold"]
-        if not isinstance(h, list) or any(k not in KINDS_V11 for k in h):
-            raise BadInput("hold phải là mảng id nguyên liệu hợp lệ")
+        h = validate_item_list(b["hold"])
         if len(h) > g["hold_capacity"]:
             raise BadInput("hold vượt sức chứa")
     p = b.get("player", {})
@@ -317,7 +315,7 @@ def _validate_quan(b, tuning):
         if arr in b:
             _check_ids(arr, b[arr])
     if "stock" in b:
-        validate_items(b["stock"])
+        validate_item_list(b["stock"])
     if "random_customers" in b and not isinstance(b["random_customers"], bool):
         raise BadInput("random_customers phải là boolean")
     if "reputation" in b:
@@ -376,7 +374,11 @@ def _validate_quan(b, tuning):
         if "order_status" in c and c["order_status"] not in ("reserved", "assigned", "unfulfillable", "served"):
             raise BadInput(f"customers.{c['id']}: order_status không hợp lệ")
         if "reserved" in c:
-            validate_items(c["reserved"])
+            res = c["reserved"]
+            if not isinstance(res, list) or any(not isinstance(iid, str) or not iid for iid in res):
+                raise BadInput(f"customers.{c['id']}.reserved phải là mảng id cá thể (v1.2)")
+            if len(res) != len(set(res)):
+                raise BadInput(f"customers.{c['id']}.reserved có id trùng")
         for mk in ("base_price", "tip"):
             if mk in c and c[mk] is not None:
                 if isinstance(c[mk], bool) or not isinstance(c[mk], int):

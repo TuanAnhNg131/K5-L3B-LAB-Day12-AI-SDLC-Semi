@@ -1,7 +1,9 @@
-"""Chế độ Một Ngày (`day`) v1.1: ghép gather -> quan -> shop xuyên 1..5 Ngày."""
+"""Chế độ Một Ngày (`day`) v1.2: ghép gather -> quan -> shop xuyên 1..5 Ngày với kho cá thể."""
 
 import copy
 
+from ..ids import sort_by_id
+from ..inventory import item_to_public
 from .gather import GatherSim
 from .quan import QuanSim
 
@@ -49,7 +51,7 @@ class DaySim:
 
         self.phase = "gather"
         self.sub = None
-        self.shop_stock = {}
+        self.shop_stock = []
         self.shop_phase_tick = 0
         self.shop_time_left = 0
         self._pending_init = []
@@ -93,12 +95,20 @@ class DaySim:
                     break
         return t
 
+    def _gather_scenario_for_day(self, day_num: int) -> dict:
+        if day_num == 1 or "hold" not in self.gather_tpl:
+            return self.gather_tpl
+        tpl = dict(self.gather_tpl)
+        tpl["hold"] = [{"id": self.ids.new("I"), "kind": it["kind"], "fresh": it["fresh"]} for it in self.gather_tpl["hold"]]
+        return tpl
+
     def _start_day(self, day_num: int):
         self.day = day_num
         self.phase = "gather"
+        self.shop_stock = []
         eff_t = self._effective_tuning()
         self.sub = GatherSim(
-            eff_t, self.gather_tpl, self.rng, self.ids,
+            eff_t, self._gather_scenario_for_day(day_num), self.rng, self.ids,
             day=self.day, money=self.money, earned=self.earned, reputation=self.reputation,
         )
         self._pending_init.extend([
@@ -115,7 +125,7 @@ class DaySim:
         if self.sub is not None:
             snap = self.sub.snapshot()
         else:
-            snap = {"stock": {k: self.shop_stock[k] for k in sorted(self.shop_stock) if self.shop_stock[k] > 0}}
+            snap = {"stock": [item_to_public(it) for it in sort_by_id(self.shop_stock)]}
         snap["day"] = self.day
         snap["day_plan"] = self._plan_copy(self.day)
         snap["upgrades"] = {k: self.upgrades[k] for k in sorted(self.upgrades)}
@@ -131,7 +141,7 @@ class DaySim:
             for nm, dt in ev:
                 out.append(("gather", self.day, nm, dt))
             if self.sub.done:
-                inv = self.sub.inventory_items()
+                inv = self.sub.internal_inventory_items()
                 allowed = set(self.day_plans[self.day]["dishes"].keys())
                 self.sub = QuanSim(
                     self.tuning, self.quan_tpl, self.rng, self.ids,
@@ -163,7 +173,7 @@ class DaySim:
                 self.total_left += self.sub.left_count
                 for did, cnt in self.sub.dish_sales.items():
                     self.total_dish_sales[did] = self.total_dish_sales.get(did, 0) + cnt
-                self.shop_stock = {k: v for k, v in self.sub.stock.items() if v > 0}
+                self.shop_stock = [dict(it) for it in sort_by_id(self.sub.stock)]
                 self.sub = None
                 self.phase = "shop"
                 self.shop_phase_tick = 0
