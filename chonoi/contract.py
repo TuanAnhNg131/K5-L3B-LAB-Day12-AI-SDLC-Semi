@@ -247,3 +247,14 @@ def validate_tuning(t):
                 raise BadInput(f"tuning.shop.upgrades.{uid}[{idx - 1}] phải có level == {idx}")
             _int_between(f"shop.upgrades.{uid}[{idx - 1}].price", item.get("price"), 1, 1_000_000)
             _between(f"shop.upgrades.{uid}[{idx - 1}].{field}", item.get(field), lo, hi)
+
+    fr = t.get("freshness")
+    if not isinstance(fr, dict):
+        raise BadInput("thiếu tuning.freshness (v1.2)")
+    _between("freshness.initial", fr.get("initial"), 1, 100)
+    if not _num(fr.get("gather_decay_per_s")) or fr["gather_decay_per_s"] <= 0:
+        raise BadInput("tuning.freshness.gather_decay_per_s phải > 0")
+    if not _num(fr.get("quan_decay_per_s")) or fr["quan_decay_per_s"] <= 0:
+        raise BadInput("tuning.freshness.quan_decay_per_s phải > 0")
+    if not _num(fr.get("spoiled_below")) or not (0 < fr["spoiled_below"] < fr["initial"]):
+        raise BadInput("tuning.freshness.spoiled_below phải trong (0, initial)")
