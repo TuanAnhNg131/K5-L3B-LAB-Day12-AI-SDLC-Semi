@@ -1,6 +1,11 @@
-# Hợp đồng tích hợp (Contract v1.2 — Phase 3)
+# Hợp đồng tích hợp (Contract v1.3 — Phase 4)
 
-Cập nhật từ v1.1 lên v1.2 theo `TICKET-03` ("Mùa Nước Nổi", xem [`0001-itemized-inventory-freshness.md`](../adr/0001-itemized-inventory-freshness.md)).
+Cập nhật từ v1.2 lên v1.3 theo `TICKET-04`: giữ nguyên gameplay, tuning, kho cá thể và JSONL v1.2; bổ sung `bench_cmd` và `soak_cmd` tại gốc `game.contract.json`.
+
+## 0. Lệnh đo hiệu năng & kiểm bền (`v1.3`)
+
+- **`bench_cmd` (`python3 -m chonoi.bench`):** Nhận `--seed <int> --duration <s > --out <bench.json>` (mặc định `--warmup 3.0`), dựng cảnh lặn `1280×720` và xuất đúng 5 khóa: `avg_fps, p1_low_fps, frames, measured_s, load_ms`.
+- **`soak_cmd` (`python3 -m chonoi.soak`):** Nhận `--seed <int> --days <N> --out <soak.json>`, chạy liên tục `N` Ngày bằng bot tất định (Ngày 6–10 lặp lại kế hoạch D1–D5) và xuất: `days, days_completed, crashes, results[], duration_s`.
 
 ## 1. Schema file kho (`inventory`, **BREAKING CHANGE v1.2**)
 

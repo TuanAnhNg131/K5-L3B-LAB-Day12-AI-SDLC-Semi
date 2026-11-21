@@ -21,19 +21,27 @@ def frames(*fr):
     return {"frames": list(fr)}
 
 
-def headless_cmd():
-    """Lệnh headless khai trong game.contract.json — test chạy qua đây nên dùng được với MỌI ngôn ngữ."""
+def contract_cmd(key="headless_cmd"):
+    """Lấy lệnh khai trong game.contract.json (hỗ trợ headless_cmd, bench_cmd, soak_cmd)."""
     with open(os.path.join(ROOT, "game.contract.json"), encoding="utf-8") as f:
-        cmd = shlex.split(json.load(f)["headless_cmd"])
+        cmd = shlex.split(json.load(f)[key])
     if os.name == "nt" and cmd and cmd[0] == "python3":
         cmd[0] = sys.executable
     return cmd
 
 
+def headless_cmd():
+    return contract_cmd("headless_cmd")
+
+
+def run_contract_cmd(key, *args, cwd=ROOT):
+    p = subprocess.run([*contract_cmd(key), *args], cwd=cwd, capture_output=True, text=True)
+    return p.returncode, p.stderr
+
+
 def run_headless(*args, cwd=ROOT):
     """Chạy `<headless_cmd> <args>`; trả (mã thoát, stderr)."""
-    p = subprocess.run([*headless_cmd(), *args], cwd=cwd, capture_output=True, text=True)
-    return p.returncode, p.stderr
+    return run_contract_cmd("headless_cmd", *args, cwd=cwd)
 
 
 def read_jsonl(path):

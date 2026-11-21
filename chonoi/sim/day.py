@@ -75,7 +75,8 @@ class DaySim:
         return self.shop_time_left
 
     def _plan_copy(self, day_num=None) -> dict:
-        pl = self.day_plans[self.day if day_num is None else day_num]
+        d = self.day if day_num is None else day_num
+        pl = self.day_plans[((d - 1) % 5) + 1]
         return {"dishes": dict(pl["dishes"]), "ingredients": dict(pl["ingredients"])}
 
     def _effective_tuning(self) -> dict:
@@ -142,7 +143,7 @@ class DaySim:
                 out.append(("gather", self.day, nm, dt))
             if self.sub.done:
                 inv = self.sub.internal_inventory_items()
-                allowed = set(self.day_plans[self.day]["dishes"].keys())
+                allowed = set(self.day_plans[((self.day - 1) % 5) + 1]["dishes"].keys())
                 self.sub = QuanSim(
                     self.tuning, self.quan_tpl, self.rng, self.ids,
                     inventory=inv, allowed_dishes=allowed,
