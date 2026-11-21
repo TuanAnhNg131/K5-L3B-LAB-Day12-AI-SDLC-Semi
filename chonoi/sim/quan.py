@@ -15,10 +15,12 @@ class QuanSim:
     mode = "quan"
     phase = "quan"
 
-    def __init__(self, tuning, scenario, streams, ids, inventory=None):
+    def __init__(self, tuning, scenario, streams, ids, inventory=None, allowed_dishes=None,
+                 initial_money=0, initial_earned=0, initial_reputation=None):
         t = tuning["quan"]
         self.t = t
         self.menu = tuning["menu"]
+        self.allowed_dishes = set(allowed_dishes) if allowed_dishes is not None else None
         self.rng = streams
         self.ids = ids
         p = scenario.get("player", {})
@@ -35,7 +37,8 @@ class QuanSim:
         self.patience_max = int(round(t["patience_s"] * TICK))
         self.eat_max = int(round(t["eat_s"] * TICK))
         self.time_left_ticks = scenario.get("time_left_ticks", int(round(t["duration_s"] * TICK)))
-        self.reputation = float(scenario.get("reputation", t["reputation_initial"]))
+        default_rep = t["reputation_initial"] if initial_reputation is None else initial_reputation
+        self.reputation = float(scenario.get("reputation", default_rep))
         self.stoves = self._init_stoves(t["stoves"], scenario.get("stoves", []))
         self.tables = [dict(tb, pos=[float(c) for c in tb["pos"]])
                        for tb in self._merge(t["tables"], scenario.get("tables", []))]
@@ -43,9 +46,13 @@ class QuanSim:
         self._validate_cross_links()
         for e in self.customers:
             ids.reserve(e["id"])
-        self.money = 0
-        self.earned = 0
+        self.money = int(initial_money)
+        self.earned = int(initial_earned)
         self.shift_earned = 0
+        self.served_count = 0
+        self.left_count = 0
+        self.shift_tips = 0
+        self.dish_sales = {}
         self.done = False
         self.reason = None
 
@@ -56,6 +63,8 @@ class QuanSim:
             raise BadInput(f"{label}: order_id không hợp lệ")
         if d.get("dish_id") not in self.menu:
             raise BadInput(f"{label}: dish_id không có trong thực đơn")
+        if self.allowed_dishes is not None and d.get("dish_id") not in self.allowed_dishes:
+            raise BadInput(f"{label}: dish_id {d.get('dish_id')} không thuộc kế hoạch ngày")
         bp = d.get("base_price")
         if isinstance(bp, bool) or not isinstance(bp, int) or bp <= 0:
             raise BadInput(f"{label}: base_price phải là số nguyên dương")
@@ -97,6 +106,8 @@ class QuanSim:
             dish_id = c.get("dish_id")
             if dish_id not in self.menu:
                 raise BadInput(f"khách {cid}: dish_id không hợp lệ")
+            if self.allowed_dishes is not None and dish_id not in self.allowed_dishes:
+                raise BadInput(f"khách {cid}: dish_id {dish_id} không thuộc kế hoạch ngày")
             state = c.get("state", "waiting")
             order_tick = c.get("order_tick", 0)
             if state == "eating":
@@ -380,6 +391,9 @@ class QuanSim:
                     self.money += amount
                     self.earned += amount
                     self.shift_earned += amount
+                    self.served_count += 1
+                    self.shift_tips += c["tip"]
+                    self.dish_sales[c["dish_id"]] = self.dish_sales.get(c["dish_id"], 0) + 1
                     if c["tip"] > 0:
                         self._adjust_reputation(self.t["tip_reputation"])
                     events.append(("paid", {
@@ -397,6 +411,7 @@ class QuanSim:
                     c["reserved"] = {}
                     self._discard_order_dish(c["id"])
                     self._adjust_reputation(self.t["left_reputation_delta"])
+                    self.left_count += 1
                     events.append(("customer_left", {
                         "order_id": c["id"],
                         "table_id": c["table_id"],
@@ -406,6 +421,7 @@ class QuanSim:
                 elif closing:
                     c["reserved"] = {}
                     self._discard_order_dish(c["id"])
+                    self.left_count += 1
                     events.append(("customer_left", {
                         "order_id": c["id"],
                         "table_id": c["table_id"],
@@ -432,7 +448,8 @@ class QuanSim:
                 avail[k] = avail.get(k, 0) - qty
         cookable = [
             dish_id for dish_id in sorted(self.menu)
-            if all(avail.get(k, 0) >= qty for k, qty in self.menu[dish_id]["recipe"].items())
+            if (self.allowed_dishes is None or dish_id in self.allowed_dishes)
+            and all(avail.get(k, 0) >= qty for k, qty in self.menu[dish_id]["recipe"].items())
         ]
         if not cookable:
             events.append(("no_dish", {}))
